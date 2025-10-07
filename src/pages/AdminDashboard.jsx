@@ -15,6 +15,8 @@ function AdminDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [refreshPosts, setRefreshPosts] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [userSearchQuery, setUserSearchQuery] = useState("");
   const navigate = useNavigate();
 
   const username = localStorage.getItem("username") || "Admin";
@@ -40,6 +42,9 @@ function AdminDashboard() {
   const handleNavigation = (page) => {
     setActivePage(page);
     setIsSidebarOpen(false);
+    // Reset search queries when navigating
+    setSearchQuery("");
+    setUserSearchQuery("");
   };
 
   const fetchUsers = async () => {
@@ -55,6 +60,12 @@ function AdminDashboard() {
       }
     }
   };
+
+  // Filter users based on search query
+  const filteredUsers = users.filter(user => 
+    user.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+    user.role.toLowerCase().includes(userSearchQuery.toLowerCase())
+  );
 
   const renderContent = () => {
     switch (activePage) {
@@ -169,7 +180,7 @@ function AdminDashboard() {
         return (
           <div className="p-4 lg:p-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 lg:p-6 mb-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 mb-2">User Management</h1>
                   <p className="text-gray-600">Manage system users and access permissions</p>
@@ -181,6 +192,32 @@ function AdminDashboard() {
                   <FaUser className="text-lg" />
                   Create User
                 </button>
+              </div>
+
+              {/* Users Search Bar - Real-time */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search users by name or role..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                {userSearchQuery && (
+                  <button
+                    onClick={() => setUserSearchQuery("")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -206,71 +243,77 @@ function AdminDashboard() {
             )}
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {users.map((user) => (
-                      <tr key={user._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-blue-600 text-sm font-medium">
-                                {user.username?.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{user.username}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            user.role === 'admin' 
-                              ? 'bg-purple-100 text-purple-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setEditUser(user)}
-                              className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded text-sm transition-colors"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={async () => {
-                                if (!window.confirm(`Are you sure you want to delete user "${user.username}"?`)) return;
-                                try {
-                                  await API.delete(`/users/${user._id}`, {
-                                    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-                                  });
-                                  fetchUsers();
-                                } catch (err) {
-                                  console.error("Error deleting user:", err);
-                                  alert("Error deleting user");
-                                }
-                              }}
-                              className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded text-sm transition-colors"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
+              {filteredUsers.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  {userSearchQuery ? "No users found matching your search." : "No users available."}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredUsers.map((user) => (
+                        <tr key={user._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-blue-600 text-sm font-medium">
+                                  {user.username?.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">{user.username}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              user.role === 'admin' 
+                                ? 'bg-purple-100 text-purple-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setEditUser(user)}
+                                className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded text-sm transition-colors"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!window.confirm(`Are you sure you want to delete user "${user.username}"?`)) return;
+                                  try {
+                                    await API.delete(`/users/${user._id}`, {
+                                      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+                                    });
+                                    fetchUsers();
+                                  } catch (err) {
+                                    console.error("Error deleting user:", err);
+                                    alert("Error deleting user");
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded text-sm transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -278,8 +321,38 @@ function AdminDashboard() {
         return (
           <div className="p-4 lg:p-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 lg:p-6 mb-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Document Management</h1>
-              <p className="text-gray-600">Create and manage court documents and opinions</p>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">Document Management</h1>
+                  <p className="text-gray-600">Create and manage court documents and opinions</p>
+                </div>
+              </div>
+              
+              {/* Documents Search Bar - Real-time */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search documents by title or content..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className="mb-6">
@@ -287,7 +360,7 @@ function AdminDashboard() {
             </div>
             
             <div>
-              <PostList key={refreshPosts} />
+              <PostList key={refreshPosts} searchQuery={searchQuery} />
             </div>
           </div>
         );
@@ -383,6 +456,17 @@ function AdminDashboard() {
             <span>Documents</span>
           </button>
         </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-blue-700">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-left text-blue-100 hover:bg-red-600 hover:text-white transition-colors"
+          >
+            <FaSignOutAlt className="text-lg" />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       {/* Overlay for mobile sidebar */}
